@@ -22,6 +22,9 @@ const store = () => new KeyvHana(hanaOptions);
 keyvTestSuite(test, Keyv, store);
 keyvIteratorTests(test, Keyv, store);
 
+const sleep = async (ms: number): Promise<void> =>
+	new Promise((resolve) => setTimeout(resolve, ms));
+
 // ── Custom adapter tests ───────────────────────────────────────────────
 
 test.beforeEach(async () => {
@@ -169,6 +172,32 @@ test.describe('KeyvHana', () => {
 		expect(await keyv.get('a')).toBe('alpha');
 		await keyv.clear();
 		expect(await keyv.get('a')).toBeUndefined();
+		await keyv.disconnect();
+	});
+
+	test.it('should expire keys set with ttl via Keyv', async ({ expect }) => {
+		const keyv = new Keyv({ store: new KeyvHana(hanaOptions) });
+		await keyv.set('ttl:key', 'value', 1000);
+		expect(await keyv.get('ttl:key')).toBe('value');
+		await sleep(1000);
+		expect(await keyv.get('ttl:key')).toBeUndefined();
+		await keyv.disconnect();
+	});
+
+	test.it('should apply default ttl from Keyv options', async ({ expect }) => {
+		const keyv = new Keyv({ store: new KeyvHana(hanaOptions), ttl: 500 });
+		await keyv.set('ttl:default', 'value');
+		expect(await keyv.get('ttl:default')).toBe('value');
+		await sleep(500);
+		expect(await keyv.get('ttl:default')).toBeUndefined();
+		await keyv.disconnect();
+	});
+
+	test.it('should treat ttl 0 as no expiration', async ({ expect }) => {
+		const keyv = new Keyv({ store: new KeyvHana(hanaOptions) });
+		await keyv.set('ttl:zero', 'value', 0);
+		await sleep(500);
+		expect(await keyv.get('ttl:zero')).toBe('value');
 		await keyv.disconnect();
 	});
 
