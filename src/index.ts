@@ -30,8 +30,8 @@ export interface KeyvHanaOptions {
 	iterationLimit?: number;
 	/** Additional @sap/hana-client connection options */
 	connectOptions?: ConnectionOptions;
-	/** Whether to auto-create the backing table on init (default: true).
-	 *  Set to false in HDI environments where the table is deployed as an .hdbtable artifact. */
+	/** Whether to auto-create the backing table on init (default: false).
+	 *  Set to true for non-HDI environments where the adapter should create the table automatically. */
 	createTable?: boolean;
 	/** URL for the connection (default: '') */
 	url?: string;
@@ -125,7 +125,7 @@ export class KeyvHana extends EventEmitter implements KeyvStoreAdapter {
 
 		// Create table if it does not exist (skipped when createTable is false,
 		// e.g. in HDI environments where the table is an .hdbtable artifact)
-		if (this.opts.createTable !== false) {
+		if (this.opts.createTable === true) {
 			const createSql = `CREATE COLUMN TABLE ${this._tableName} ("ID" NVARCHAR(${this.opts.keySize}) PRIMARY KEY, "VALUE" NCLOB)`;
 			try {
 				await this._rawExec(createSql);

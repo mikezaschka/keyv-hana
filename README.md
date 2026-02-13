@@ -58,7 +58,7 @@ await keyv.disconnect();
 | `keySize`         | `number`                 | `255`       | Max key column length (NVARCHAR size)                          |
 | `iterationLimit`  | `number`                 | `10`        | Rows fetched per iterator batch                                |
 | `connectOptions`  | `ConnectionOptions`      | `{}`        | Additional `@sap/hana-client` connect options                  |
-| `createTable`     | `boolean`                | `true`      | Auto-create the backing table on init. Set to `false` for HDI. |
+| `createTable`     | `boolean`                | `false`     | Auto-create the backing table on init. Set to `true` for non-HDI. |
 
 Any extra properties accepted by `@sap/hana-client` (e.g. `encrypt`, `sslValidateCertificate`) can be passed via `connectOptions`.
 
@@ -71,7 +71,7 @@ The adapter stores data in a HANA **column table** with two columns:
 | `ID`      | `NVARCHAR(n)`     | Primary key (unique)      |
 | `VALUE`   | `NCLOB`           | Serialized value (JSON)   |
 
-The table is created automatically on first use. If it already exists (error code 288), the adapter silently continues.
+By default the table is **not** created automatically (`createTable: false`). Set `createTable: true` to have the adapter create it on first use; if it already exists (error code 288) the adapter silently continues.
 
 To use a specific schema:
 
@@ -90,7 +90,7 @@ const store = new KeyvHana({
 
 In SAP HANA HDI (HANA Deployment Infrastructure) environments, the application connects with the **runtime user** (`_RT`), which only has DML privileges (SELECT, INSERT, UPDATE, DELETE). The **design-time user** (`_DT`) handles all DDL operations during deployment.
 
-Because the adapter's `CREATE TABLE` statement is a DDL operation, it will fail with the runtime user. Set `createTable: false` and deploy the table as an `.hdbtable` artifact instead:
+Since `createTable` defaults to `false`, the adapter is HDI-ready out of the box. Deploy the table as an `.hdbtable` artifact:
 
 **1. Create the design-time artifact** (e.g. `db/src/KEYV.hdbtable`):
 
@@ -101,7 +101,7 @@ COLUMN TABLE "KEYV" (
 )
 ```
 
-**2. Configure the adapter to skip table creation:**
+**2. Use the adapter with the runtime user:**
 
 ```typescript
 import Keyv from 'keyv';
@@ -113,10 +113,21 @@ const store = new KeyvHana({
   uid: process.env.HANA_UID,   // runtime (_RT) user
   pwd: process.env.HANA_PWD,
   schema: process.env.HANA_SCHEMA,
-  createTable: false,           // table is managed by HDI
 });
 
 const keyv = new Keyv({ store });
+```
+
+For non-HDI environments where you want the adapter to create the table automatically, set `createTable: true`:
+
+```typescript
+const store = new KeyvHana({
+  host: 'localhost',
+  port: 30015,
+  uid: 'SYSTEM',
+  pwd: 'YourPassword',
+  createTable: true,
+});
 ```
 
 ## Namespaces
