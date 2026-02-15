@@ -75,9 +75,11 @@ export class KeyvHana extends EventEmitter implements KeyvStoreAdapter {
 			...options,
 		};
 
-		this._tableName = this.opts.schema
-			? `"${this.opts.schema}"."${this.opts.table}"`
-			: `"${this.opts.table}"`;
+		const safeTable = (this.opts.table ?? 'KEYV').replace(/"/g, '""');
+		const safeSchema = this.opts.schema?.replace(/"/g, '""');
+		this._tableName = safeSchema
+			? `"${safeSchema}"."${safeTable}"`
+			: `"${safeTable}"`;
 
 		this._ready = this._init().catch((error: unknown) => {
 			this.emit('error', error);
@@ -126,7 +128,8 @@ export class KeyvHana extends EventEmitter implements KeyvStoreAdapter {
 		// Create table if it does not exist (skipped when createTable is false,
 		// e.g. in HDI environments where the table is an .hdbtable artifact)
 		if (this.opts.createTable === true) {
-			const createSql = `CREATE COLUMN TABLE ${this._tableName} ("ID" NVARCHAR(${this.opts.keySize}) PRIMARY KEY, "VALUE" NCLOB)`;
+			const keySize = Number.parseInt(String(this.opts.keySize), 10) || 255;
+			const createSql = `CREATE COLUMN TABLE ${this._tableName} ("ID" NVARCHAR(${keySize}) PRIMARY KEY, "VALUE" NCLOB)`;
 			try {
 				await this._rawExec(createSql);
 			} catch (error: any) {
